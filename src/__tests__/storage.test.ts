@@ -7,6 +7,8 @@ const localStorageMock = (() => {
     setItem:    (key: string, value: string) => { store[key] = value; },
     removeItem: (key: string) => { delete store[key]; },
     clear:      () => { store = {}; },
+    get length() { return Object.keys(store).length; },
+    key:        (i: number) => Object.keys(store)[i] ?? null,
   };
 })();
 
@@ -125,6 +127,39 @@ describe('storage', () => {
       storage.removeSession('ps_auth_token');
       expect(storage.getSession('ps_auth_token')).toBeNull();
       sessionStorageMock.setItem.mockReset();
+    });
+  });
+
+  describe('clearSession (#687)', () => {
+    it('removes session keys and prefixed per-wallet keys from both storages, keeping preferences', () => {
+      // Back the session mock with a real store for this test (#687).
+      const session = new Map<string, string>();
+      sessionStorageMock.getItem.mockImplementation((k) => session.get(k) ?? null);
+      sessionStorageMock.setItem.mockImplementation((k, v) => { session.set(k, v); });
+      sessionStorageMock.removeItem.mockImplementation((k) => { session.delete(k); });
+      Object.assign(sessionStorageMock, {
+        key: (i: number) => [...session.keys()][i] ?? null,
+      });
+      Object.defineProperty(sessionStorageMock, 'length', {
+        configurable: true,
+        get: () => session.size,
+      });
+
+      localStorage.setItem('ps_wallet_address', 'GABC');
+      localStorage.setItem('ps_theme', 'dark');
+      sessionStorage.setItem('ps_auth_token', 'jwt');
+      sessionStorage.setItem('ps_expiry_notified_abc', '["p1"]');
+      sessionStorage.setItem('ps_expiry_notified_def', '["p2"]');
+      sessionStorage.setItem('parashield_testnet_banner_dismissed', '1');
+
+      storage.clearSession(['ps_wallet_address', 'ps_auth_token'], ['ps_expiry_notified_']);
+
+      expect(localStorage.getItem('ps_wallet_address')).toBeNull();
+      expect(sessionStorage.getItem('ps_auth_token')).toBeNull();
+      expect(sessionStorage.getItem('ps_expiry_notified_abc')).toBeNull();
+      expect(sessionStorage.getItem('ps_expiry_notified_def')).toBeNull();
+      expect(localStorage.getItem('ps_theme')).toBe('dark');
+      expect(sessionStorage.getItem('parashield_testnet_banner_dismissed')).toBe('1');
     });
   });
 });

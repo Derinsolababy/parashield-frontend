@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
 import { WalletProvider, useWalletContext } from '../context/WalletContext';
 import { connectWallet } from '@/lib/stellar';
 import { fetchChallenge, login } from '@/lib/api';
+import storage from '@/lib/storage';
 
 vi.mock('@/lib/stellar', () => ({
   connectWallet:              vi.fn(),
@@ -25,6 +26,7 @@ vi.mock('@/lib/storage', () => ({
     getSession:    vi.fn(() => null),
     setSession:    vi.fn(),
     removeSession: vi.fn(),
+    clearSession:  vi.fn(),
   },
 }));
 
@@ -79,5 +81,19 @@ describe('WalletProvider auth-failure error handling (issue #221)', () => {
 
     expect(handle.ctx.error).toBe('Auth failed: login rejected');
     expect(handle.ctx.connected).toBe(false);
+  });
+});
+
+describe('WalletProvider logout cleanup (#687)', () => {
+  it('disconnect() clears all wallet/session storage, including per-wallet expiry keys', () => {
+    vi.clearAllMocks();
+    const wallet = renderWallet();
+
+    act(() => wallet.ctx.disconnect());
+
+    expect(storage.clearSession).toHaveBeenCalledWith(
+      ['ps_auth_token', 'ps_wallet_id', 'ps_wallet_address', 'ps_wallet_network'],
+      ['ps_expiry_notified_'],
+    );
   });
 });
