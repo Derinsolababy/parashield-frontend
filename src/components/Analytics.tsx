@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import posthog from 'posthog-js';
-import { page, setPostHogReady } from '@/lib/analytics';
+import { setPostHogReady, trackPageview } from '@/lib/analytics';
 
 export function Analytics() {
   const pathname = usePathname();
@@ -33,9 +33,11 @@ export function Analytics() {
     }
   }, []);
 
+  // Route change is the single source of pageviews; trackPageview drops
+  // repeat runs for the same route (Strict Mode, remounts) (#711).
   useEffect(() => {
     if (pathname) {
-      page(pathname);
+      trackPageview(pathname);
     }
   }, [pathname]);
 
