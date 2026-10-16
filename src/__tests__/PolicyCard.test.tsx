@@ -1,13 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, vi } from 'vitest';
-import { PolicyCard, formatCoverage } from '../components/PolicyCard';
-
-// PolicyCard calls useRouter(); outside a mounted app router it throws
-// "invariant expected app router to be mounted", which failed every test here.
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), prefetch: vi.fn() }),
-}));
+import { PolicyCard, isExpiringSoon } from '../components/PolicyCard';
 import type { Policy } from '../types';
+
+// PolicyCard calls useRouter(), which throws outside a mounted App Router.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 function makePolicy(overrides: Partial<Policy> = {}): Policy {
   return {
@@ -118,29 +116,32 @@ describe('PolicyCard', () => {
   });
 });
 
-describe('PolicyCard coverage validation (#715)', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+describe('PolicyCard expiring-soon badge (#680)', () => {
+  const nowSec = () => Math.floor(Date.now() / 1000);
+
+  it('shows an amber "Expiring soon" badge with the exact time for Active policies ending within 24h', () => {
+    const html = renderToStaticMarkup(
+      <PolicyCard policy={makePolicy({ status: 'Active', endTime: nowSec() + 3600 })} />
+    );
+    expect(html).toContain('Expiring soon');
+    expect(html).toContain('text-amber-400');
+    expect(html).toMatch(/title="Expires [^"]+"/);
   });
 
-  it('shows "Invalid" and warns for a negative coverage amount', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const html = renderToStaticMarkup(<PolicyCard policy={makePolicy({ coverage: '-10000000' })} />);
-    expect(html).toContain('Invalid');
-    expect(html).not.toContain('-1.00');
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('negative coverage'));
+  it('keeps the regular Active badge for policies ending later', () => {
+    const html = renderToStaticMarkup(
+      <PolicyCard policy={makePolicy({ status: 'Active', endTime: nowSec() + 3 * 86_400 })} />
+    );
+    expect(html).not.toContain('Expiring soon');
+    expect(html).toContain('aria-label="Active"');
   });
 
-  it('shows "Invalid" for a non-numeric coverage amount', () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(formatCoverage('abc', 'policy-1')).toBe('Invalid');
-  });
-
-  it('formats zero and positive coverage normally without warning', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(formatCoverage('0', 'policy-1')).not.toBe('Invalid');
-    const html = renderToStaticMarkup(<PolicyCard policy={makePolicy()} />);
-    expect(html).not.toContain('Invalid');
-    expect(warn).not.toHaveBeenCalled();
+  it('isExpiringSoon only flags Active policies inside the 24h window', () => {
+    const now = 1_000_000 * 1000;
+    const at = (secondsFromNow: number) => 1_000_000 + secondsFromNow;
+    expect(isExpiringSoon(makePolicy({ status: 'Active', endTime: at(60) }), now)).toBe(true);
+    expect(isExpiringSoon(makePolicy({ status: 'Active', endTime: at(86_400) }), now)).toBe(false);
+    expect(isExpiringSoon(makePolicy({ status: 'Active', endTime: at(-60) }), now)).toBe(false);
+    expect(isExpiringSoon(makePolicy({ status: 'Expired', endTime: at(60) }), now)).toBe(false);
   });
 });

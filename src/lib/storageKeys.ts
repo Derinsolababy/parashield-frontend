@@ -20,5 +20,8 @@ export function fingerprint(value: string): string {
 
 /** sessionStorage key for the policy IDs already warned about for a wallet. */
 export function expiryNotifiedStorageKey(address: string): string {
-  return `ps_expiry_notified_${fingerprint(address)}`;
+  return `${EXPIRY_NOTIFIED_PREFIX}${fingerprint(address)}`;
 }
+
+/** Prefix shared by every wallet's expiry-warning key, for logout cleanup (#687). */
+export const EXPIRY_NOTIFIED_PREFIX = 'ps_expiry_notified_';

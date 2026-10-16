@@ -78,6 +78,24 @@ export async function getConnectedAddress(): Promise<WalletAddress | null> {
   }
 }
 
+/**
+ * Re-read the connected wallet's current network passphrase (#724), so a
+ * network switch made in the wallet after connecting is picked up. Updates the
+ * cached value in storage; returns null if the wallet can't report it.
+ */
+export async function getWalletNetworkPassphrase(): Promise<string | null> {
+  if (!storage.get(ADDRESS_STORAGE_KEY)) return null;
+  try {
+    const net = await getKit().getNetwork();
+    const passphrase = net.networkPassphrase ?? net.network ?? null;
+    if (passphrase) storage.set(NETWORK_STORAGE_KEY, passphrase);
+    else storage.remove(NETWORK_STORAGE_KEY);
+    return passphrase;
+  } catch {
+    return null;
+  }
+}
+
 export function getStoredAddress(): WalletAddress | null {
   return storage.get(ADDRESS_STORAGE_KEY);
 }

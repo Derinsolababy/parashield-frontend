@@ -56,6 +56,18 @@ input[type=number] { -moz-appearance: textfield; }
   }
 }
 
+/* PolicyStatusTimeline: steps revealed by expanding the timeline (#700). */
+@keyframes timelineStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Set by useModalOverflow while a modal is open: stop iOS Safari from
    chaining scroll / rubber-banding the page behind the modal (#552). */
 html.modal-scroll-locked,
