@@ -95,8 +95,14 @@ export function NavBar() {
         </div>
       </div>
 
-      {mobileMenuOpen && (
-        <div id="mobile-nav" ref={mobileMenuRef} className="md:hidden border-t border-gray-200 dark:border-white/10 bg-white dark:bg-gray-950">
+      {/* Always rendered (hidden when closed) so the toggle's aria-controls
+          never points at a missing element (#692). */}
+      <div
+        id="mobile-nav"
+        ref={mobileMenuRef}
+        hidden={!mobileMenuOpen}
+        className="md:hidden border-t border-gray-200 dark:border-white/10 bg-white dark:bg-gray-950"
+      >
           <div className="px-6 py-4 space-y-3">
             {NAV_LINKS.map(({ href, label }) => (
               <Link
@@ -114,8 +120,7 @@ export function NavBar() {
               </Link>
             ))}
           </div>
-        </div>
-      )}
+      </div>
       <KeyboardShortcutHelpModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </nav>
   );
