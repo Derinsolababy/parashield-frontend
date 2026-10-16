@@ -107,3 +107,48 @@ describe('SearchBar debouncing', () => {
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('');
   });
 });
+
+describe('SearchBar accessibility (#716)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('exposes a search landmark and a labelled input', () => {
+    render(<SearchBar onSearch={vi.fn()} label="Search insurance products" />);
+    expect(screen.getByRole('search')).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Search insurance products' })).toBeTruthy();
+  });
+
+  it('falls back to a default accessible name', () => {
+    render(<SearchBar onSearch={vi.fn()} />);
+    expect(screen.getByRole('textbox', { name: 'Search' })).toBeTruthy();
+  });
+
+  it('points aria-controls at the results region', () => {
+    render(<SearchBar onSearch={vi.fn()} resultsId="product-results" />);
+    expect(screen.getByRole('textbox').getAttribute('aria-controls')).toBe('product-results');
+  });
+
+  it('announces the result count politely once the query settles', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<SearchBar onSearch={vi.fn()} resultCount={4} />);
+    const status = screen.getByRole('status');
+    expect(status.getAttribute('aria-live')).toBe('polite');
+    expect(status.textContent).toBe('');
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'crop' } });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    rerender(<SearchBar onSearch={vi.fn()} resultCount={1} />);
+    expect(status.textContent).toBe('1 result for "crop"');
+
+    rerender(<SearchBar onSearch={vi.fn()} resultCount={0} />);
+    expect(status.textContent).toBe('0 results for "crop"');
+  });
+
+  it('renders no live region when resultCount is not provided', () => {
+    render(<SearchBar onSearch={vi.fn()} />);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+});
