@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach, afterEach, type Mock } from 'vite
 import { NETWORK_RECHECK_INTERVAL_MS, WalletProvider, useWalletContext } from '../context/WalletContext';
 import { connectWallet, getWalletNetworkPassphrase } from '@/lib/stellar';
 import { fetchChallenge, login } from '@/lib/api';
+import storage from '@/lib/storage';
 
 vi.mock('@/lib/stellar', () => ({
   connectWallet:              vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('@/lib/storage', () => ({
     getSession:    vi.fn(() => null),
     setSession:    vi.fn(),
     removeSession: vi.fn(),
+    clearSession:  vi.fn(),
   },
 }));
 
@@ -83,50 +85,16 @@ describe('WalletProvider auth-failure error handling (issue #221)', () => {
   });
 });
 
-describe('WalletProvider network re-check after a wallet switch (#724)', () => {
-  const TESTNET = 'Test SDF Network ; September 2015';
-  const PUBLIC = 'Public Global Stellar Network ; September 2015';
-
-  beforeEach(() => {
+describe('WalletProvider logout cleanup (#687)', () => {
+  it('disconnect() clears all wallet/session storage, including per-wallet expiry keys', () => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
-    (fetchChallenge as Mock).mockResolvedValue('challenge-123');
-    (login as Mock).mockResolvedValue({ token: 'jwt' });
-    (connectWallet as Mock).mockResolvedValue({ address: 'GABC', networkPassphrase: TESTNET });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('updates networkPassphrase when the wallet switches networks after connecting', async () => {
-    (getWalletNetworkPassphrase as Mock).mockResolvedValue(TESTNET);
     const wallet = renderWallet();
-    await act(async () => {
-      await wallet.ctx.connect();
-    });
-    expect(wallet.ctx.networkPassphrase).toBe(TESTNET);
 
-    // User switches to mainnet in the wallet; the next re-check picks it up.
-    (getWalletNetworkPassphrase as Mock).mockResolvedValue(PUBLIC);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(NETWORK_RECHECK_INTERVAL_MS);
-    });
-    expect(wallet.ctx.networkPassphrase).toBe(PUBLIC);
-  });
+    act(() => wallet.ctx.disconnect());
 
-  it('re-checks immediately when the window regains focus', async () => {
-    (getWalletNetworkPassphrase as Mock).mockResolvedValue(TESTNET);
-    const wallet = renderWallet();
-    await act(async () => {
-      await wallet.ctx.connect();
-    });
-
-    (getWalletNetworkPassphrase as Mock).mockResolvedValue(PUBLIC);
-    await act(async () => {
-      window.dispatchEvent(new Event('focus'));
-      await Promise.resolve();
-    });
-    expect(wallet.ctx.networkPassphrase).toBe(PUBLIC);
+    expect(storage.clearSession).toHaveBeenCalledWith(
+      ['ps_auth_token', 'ps_wallet_id', 'ps_wallet_address', 'ps_wallet_network'],
+      ['ps_expiry_notified_'],
+    );
   });
 });

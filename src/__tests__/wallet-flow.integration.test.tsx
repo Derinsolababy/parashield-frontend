@@ -27,6 +27,7 @@ vi.mock('@/lib/storage', () => ({
     getSession:    vi.fn(() => null),
     setSession:    vi.fn(),
     removeSession: vi.fn(),
+    clearSession:  vi.fn(),
   },
 }));
 

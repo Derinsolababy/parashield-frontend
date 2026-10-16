@@ -11,11 +11,14 @@ import { Skeleton, SkeletonCard } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { formatUSDC, formatDateTime, safeBigInt } from "@/lib/format";
 import { StatsCard } from "@/components/StatsCard";
+import { TREND_PERIOD_SECONDS, computeTrend, policyStatsAt } from "@/lib/statsTrend";
 import { WalletAddressDisplay } from "@/components/WalletAddressDisplay";
 import { useToast } from "@/context/ToastContext";
 import { useExpiryWarnings } from "@/hooks/useExpiryWarnings";
 import type { Claim } from "@/types";
 import Link from "next/link";
+
+const TREND_SUBLABEL = "vs. 30 days ago";
 
 export default function DashboardPage() {
   const { address, connected } = useWallet();
@@ -46,6 +49,23 @@ export default function DashboardPage() {
   // Warn (once per policy per session) about policies expiring within 24 hours
   useExpiryWarnings(policies, connected && !loading, address, showToast);
 
+  const active = useMemo(() => policies.filter((p) => p.status === "Active"), [policies]);
+  const totalCov = useMemo(() => active.reduce((sum, p) => sum + safeBigInt(p.coverage), 0n), [active]);
+  const totalPaid = useMemo(() => active.reduce((sum, p) => sum + safeBigInt(p.premiumPaid), 0n), [active]);
+
+  // Trend vs. TREND_PERIOD_SECONDS ago, rebuilt from policy timestamps (#688).
+  const trends = useMemo(() => {
+    const previous = policyStatsAt(policies, Math.floor(Date.now() / 1000) - TREND_PERIOD_SECONDS);
+    return {
+      active:   computeTrend(active.length, previous.active),
+      total:    computeTrend(policies.length, previous.total),
+      coverage: computeTrend(totalCov, previous.coverage),
+      premiums: computeTrend(totalPaid, previous.premiums),
+    };
+  }, [policies, active, totalCov, totalPaid]);
+
+  // Must stay below every hook: returning earlier changed the hook count
+  // between renders whenever the wallet connected or disconnected.
   if (!connected) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-20">
@@ -54,9 +74,6 @@ export default function DashboardPage() {
     );
   }
 
-  const active = useMemo(() => policies.filter((p) => p.status === "Active"), [policies]);
-  const totalCov = useMemo(() => active.reduce((sum, p) => sum + safeBigInt(p.coverage), 0n), [active]);
-  const totalPaid = useMemo(() => active.reduce((sum, p) => sum + safeBigInt(p.premiumPaid), 0n), [active]);
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-12">
@@ -91,13 +108,30 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatsCard label="Active policies" value={loading ? <Skeleton className="h-8 w-20" /> : active.length.toString()} />
+          <StatsCard
+            label="Active policies"
+            value={loading ? <Skeleton className="h-8 w-20" /> : active.length.toString()}
+            {...(loading ? {} : trends.active)}
+            sublabel={loading ? undefined : TREND_SUBLABEL}
+          />
           <StatsCard
             label="Total policies"
             value={loading ? <Skeleton className="h-8 w-20" /> : policies.length.toString()}
+            {...(loading ? {} : trends.total)}
+            sublabel={loading ? undefined : TREND_SUBLABEL}
           />
-          <StatsCard label="Total coverage" value={loading ? <Skeleton className="h-8 w-24" /> : formatUSDC(totalCov)} />
-          <StatsCard label="Total premiums" value={loading ? <Skeleton className="h-8 w-24" /> : formatUSDC(totalPaid)} />
+          <StatsCard
+            label="Total coverage"
+            value={loading ? <Skeleton className="h-8 w-24" /> : formatUSDC(totalCov)}
+            {...(loading ? {} : trends.coverage)}
+            sublabel={loading ? undefined : TREND_SUBLABEL}
+          />
+          <StatsCard
+            label="Total premiums"
+            value={loading ? <Skeleton className="h-8 w-24" /> : formatUSDC(totalPaid)}
+            {...(loading ? {} : trends.premiums)}
+            sublabel={loading ? undefined : TREND_SUBLABEL}
+          />
         </div>
       )}
 

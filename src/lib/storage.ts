@@ -100,5 +100,31 @@ function removeSession(key: string): void {
   catch (error) { warnSecurityError('removeSession', error); }
 }
 
-const storage = { get, set, remove, getJSON, setJSON, getSession, setSession, removeSession };
+/**
+ * Wipe everything tied to the connected wallet / signed-in session (#687):
+ * the exact `keys` from both localStorage and sessionStorage, every key that
+ * starts with one of `prefixes` (per-wallet keys such as
+ * `ps_expiry_notified_<fingerprint>`), and their in-memory fallbacks.
+ * User preferences (theme, filters) are deliberately not listed by callers.
+ */
+function clearSession(keys: readonly string[], prefixes: readonly string[] = []): void {
+  if (!isClient) return;
+  const matches = (key: string) => keys.includes(key) || prefixes.some((p) => key.startsWith(p));
+
+  for (const map of [memoryLocal, memorySession]) {
+    for (const key of [...map.keys()]) if (matches(key)) map.delete(key);
+  }
+  for (const [area, name] of [[localStorage, 'clearSession(local)'], [sessionStorage, 'clearSession(session)']] as const) {
+    try {
+      const doomed: string[] = [];
+      for (let i = 0; i < area.length; i++) {
+        const key = area.key(i);
+        if (key !== null && matches(key)) doomed.push(key);
+      }
+      doomed.forEach((key) => area.removeItem(key));
+    } catch (error) { warnSecurityError(name, error); }
+  }
+}
+
+const storage = { get, set, remove, getJSON, setJSON, getSession, setSession, removeSession, clearSession };
 export default storage;

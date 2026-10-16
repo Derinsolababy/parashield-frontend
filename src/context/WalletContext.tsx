@@ -5,8 +5,24 @@ import { connectWallet, disconnectWallet, getStoredAddress, getConnectedAddress,
 import { toUserMessage } from '@/lib/errors';
 import { fetchChallenge, login, setAuthErrorHandler } from '@/lib/api';
 import storage from '@/lib/storage';
-import { AUTH_TOKEN_STORAGE_KEY, NETWORK_LABEL, networkLabelForPassphrase } from '@/lib/constants';
+import {
+  ADDRESS_STORAGE_KEY,
+  AUTH_TOKEN_STORAGE_KEY,
+  NETWORK_LABEL,
+  NETWORK_STORAGE_KEY,
+  WALLET_STORAGE_KEY,
+  networkLabelForPassphrase,
+} from '@/lib/constants';
+import { EXPIRY_NOTIFIED_PREFIX } from '@/lib/storageKeys';
 import type { WalletState } from '@/types';
+
+/** Storage keys tied to the connected wallet / signed-in session (#687). */
+const SESSION_STORAGE_KEYS = [
+  AUTH_TOKEN_STORAGE_KEY,
+  WALLET_STORAGE_KEY,
+  ADDRESS_STORAGE_KEY,
+  NETWORK_STORAGE_KEY,
+] as const;
 
 interface WalletContextValue {
   address:           string | null;
@@ -32,7 +48,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     disconnectWallet();
-    storage.removeSession(AUTH_TOKEN_STORAGE_KEY);
+    // Clear all wallet/session data, not just the auth token, so nothing tied
+    // to this wallet survives logout on a shared device (#687).
+    storage.clearSession(SESSION_STORAGE_KEYS, [EXPIRY_NOTIFIED_PREFIX]);
     setAddress(null);
     setError(null);
     setNetworkPassphrase(null);
