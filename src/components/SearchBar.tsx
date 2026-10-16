@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Loader2, Search, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 
 interface SearchBarProps {
@@ -21,6 +21,9 @@ export function SearchBar({
 }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const debouncedQuery   = useDebounce(query, debounceMs);
+  // True while the latest keystroke is still waiting out the debounce (#653).
+  // Clearing fires onSearch('') immediately, so an empty query is never pending.
+  const isPending = query !== '' && query !== debouncedQuery;
   const pathname = usePathname();
 
   useEffect(() => {
@@ -36,13 +39,23 @@ export function SearchBar({
 
   return (
     <div className={`relative ${className ?? ''}`}>
-      <Search
-        size={16}
-        aria-hidden="true"
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-      />
+      {isPending ? (
+        <Loader2
+          size={16}
+          aria-hidden="true"
+          data-testid="search-pending"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 animate-spin text-teal-400"
+        />
+      ) : (
+        <Search
+          size={16}
+          aria-hidden="true"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        />
+      )}
       <input
         type="text"
+        aria-busy={isPending}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
