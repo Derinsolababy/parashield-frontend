@@ -19,6 +19,25 @@ export function isExpiringSoon(policy: Policy, nowMs: number = Date.now()): bool
   return remainingMs > 0 && remainingMs < EXPIRY_WARNING_MS;
 }
 
+/**
+ * Format a coverage amount, or "Invalid" (with a console warning) when it is
+ * negative or not an integer stroop value — never render a bad amount as-is (#715).
+ */
+export function formatCoverage(stroops: string | bigint, policyId: string): string {
+  let value: bigint;
+  try {
+    value = typeof stroops === 'bigint' ? stroops : BigInt(stroops);
+  } catch {
+    console.warn(`PolicyCard: unparseable coverage "${String(stroops)}" for policy ${policyId}`);
+    return 'Invalid';
+  }
+  if (value < BigInt(0)) {
+    console.warn(`PolicyCard: negative coverage ${value} for policy ${policyId}`);
+    return 'Invalid';
+  }
+  return formatUSDC(value);
+}
+
 interface PolicyCardProps {
   policy: Policy;
 }
@@ -30,6 +49,8 @@ function PolicyCardComponent({ policy }: PolicyCardProps) {
   const isActive   = policy.status === 'Active';
   const expiringSoon = isExpiringSoon(policy);
   const policyHref = `/policies/${policy.id}`;
+  const coverage   = formatCoverage(policy.coverage, policy.id);
+  const coverageClass = coverage === 'Invalid' ? 'text-red-400' : 'text-emerald-400';
 
   const navigateToPolicy = useCallback(() => {
     router.push(policyHref);
@@ -100,7 +121,7 @@ function PolicyCardComponent({ policy }: PolicyCardProps) {
       <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div>
           <dt className="text-gray-400">Coverage</dt>
-          <dd className="mt-0.5 font-semibold text-emerald-400">{formatUSDC(policy.coverage)}</dd>
+          <dd className={`mt-0.5 font-semibold ${coverageClass}`}>{coverage}</dd>
         </div>
         <div>
           <dt className="text-gray-400">Premium paid</dt>
@@ -147,7 +168,7 @@ function PolicyCardComponent({ policy }: PolicyCardProps) {
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-gray-400 shrink-0">Coverage</dt>
-            <dd className="text-emerald-400 font-semibold">{formatUSDC(policy.coverage)}</dd>
+            <dd className={`${coverageClass} font-semibold`}>{coverage}</dd>
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-gray-400 shrink-0">Premium</dt>
