@@ -19,26 +19,19 @@ function ProductCardComponent({ product, compareSelected, onCompareToggle }: Pro
   const icon            = CATEGORY_ICONS[product.category] ?? '🛡️';
   const isActive        = product.status === 'Active';
 
-  const handleCardKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      if (isActive) setOpen(true);
-    }
-  };
-
   const handleCompareChange = useCallback(() => {
     onCompareToggle?.(product);
   }, [onCompareToggle, product]);
 
   return (
     <>
+      {/* Not role="button" (#668): a button's children are presentational to
+          assistive tech, which hid the nested Compare checkbox from screen
+          readers. Clicking anywhere still opens the modal for mouse users;
+          keyboard users get the real "Buy Policy" button below. */}
       <div
-        role="button"
-        tabIndex={0}
         onClick={() => isActive && setOpen(true)}
-        onKeyDown={handleCardKeyDown}
-        aria-label={`${product.name} — ${isActive ? 'Buy Policy' : product.status}`}
-        className={`flex flex-col rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.03] p-6 transition-all hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-100 dark:hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 ${!isActive ? 'opacity-60' : ''}`}
+        className={`flex flex-col rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.03] p-6 transition-all hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-100 dark:hover:bg-white/[0.05] ${!isActive ? 'opacity-60' : ''}`}
       >
         <div className="flex items-start justify-between gap-3">
           <span className="text-3xl">{icon}</span>
@@ -54,7 +47,8 @@ function ProductCardComponent({ product, compareSelected, onCompareToggle }: Pro
                   type="checkbox"
                   checked={!!compareSelected}
                   onChange={handleCompareChange}
-                  className="h-4 w-4 rounded border-white/20 bg-white/5 text-teal-500 focus:ring-teal-500"
+                  aria-label={`Compare ${product.name}`}
+                  className="h-4 w-4 rounded border-white/20 bg-white/5 text-teal-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
                 />
                 Compare
               </label>
@@ -98,7 +92,7 @@ function ProductCardComponent({ product, compareSelected, onCompareToggle }: Pro
           disabled={!isActive}
           aria-disabled={!isActive}
           aria-label={isActive ? 'Buy Policy' : `Buy Policy — ${product.status === 'Paused' ? 'temporarily unavailable' : 'no longer available'}`}
-          className={`mt-6 w-full rounded-xl py-2.5 text-sm font-semibold transition-colors ${
+          className={`mt-6 w-full rounded-xl py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 ${
             isActive
               ? 'bg-teal-500 text-white hover:bg-teal-400'
               : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'

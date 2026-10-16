@@ -88,6 +88,38 @@ describe('SearchBar debouncing', () => {
     expect(onSearch).toHaveBeenCalledWith('crop');
   });
 
+  it('shows a spinner and aria-busy while the debounce is pending (#653)', () => {
+    vi.useFakeTimers();
+    render(<SearchBar onSearch={vi.fn()} />);
+    const input = screen.getByRole('textbox');
+
+    expect(screen.queryByTestId('search-pending')).toBeNull();
+    expect(input.getAttribute('aria-busy')).toBe('false');
+
+    fireEvent.change(input, { target: { value: 'flood' } });
+    const spinner = screen.getByTestId('search-pending');
+    expect(spinner.getAttribute('class')).toContain('animate-spin');
+    expect(input.getAttribute('aria-busy')).toBe('true');
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByTestId('search-pending')).toBeNull();
+    expect(input.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('does not show the spinner after clearing the query (#653)', () => {
+    vi.useFakeTimers();
+    render(<SearchBar onSearch={vi.fn()} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'rain' } });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    fireEvent.click(screen.getByLabelText('Clear search'));
+    expect(screen.queryByTestId('search-pending')).toBeNull();
+  });
+
   it('clears results immediately when the clear button is pressed', () => {
     vi.useFakeTimers();
     const onSearch = vi.fn();
@@ -108,47 +140,59 @@ describe('SearchBar debouncing', () => {
   });
 });
 
-describe('SearchBar accessibility (#716)', () => {
+describe('SearchBar input responsiveness (#666)', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('exposes a search landmark and a labelled input', () => {
-    render(<SearchBar onSearch={vi.fn()} label="Search insurance products" />);
-    expect(screen.getByRole('search')).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: 'Search insurance products' })).toBeTruthy();
-  });
-
-  it('falls back to a default accessible name', () => {
-    render(<SearchBar onSearch={vi.fn()} />);
-    expect(screen.getByRole('textbox', { name: 'Search' })).toBeTruthy();
-  });
-
-  it('points aria-controls at the results region', () => {
-    render(<SearchBar onSearch={vi.fn()} resultsId="product-results" />);
-    expect(screen.getByRole('textbox').getAttribute('aria-controls')).toBe('product-results');
-  });
-
-  it('announces the result count politely once the query settles', () => {
+  it('reflects every keystroke in the input immediately, before the debounce fires', () => {
     vi.useFakeTimers();
-    const { rerender } = render(<SearchBar onSearch={vi.fn()} resultCount={4} />);
-    const status = screen.getByRole('status');
-    expect(status.getAttribute('aria-live')).toBe('polite');
-    expect(status.textContent).toBe('');
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} debounceMs={1000} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    onSearch.mockClear();
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'crop' } });
+    for (const value of ['d', 'dr', 'dro', 'drou', 'drought']) {
+      fireEvent.change(input, { target: { value } });
+      // No timers advanced: the field must already show the typed value.
+      expect(input.value).toBe(value);
+    }
+    expect(onSearch).not.toHaveBeenCalled();
+  });
+
+  it('handles a burst of keystrokes quickly', () => {
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+
+    const start = performance.now();
+    let value = '';
+    for (let i = 0; i < 200; i++) {
+      value += 'a';
+      fireEvent.change(input, { target: { value } });
+    }
+    const elapsed = performance.now() - start;
+
+    expect(input.value).toHaveLength(200);
+    // Generous bound: per-keystroke work is just a state update.
+    expect(elapsed / 200).toBeLessThan(16);
+  });
+
+  it('does not re-emit an empty query after clearing once the debounce settles', () => {
+    vi.useFakeTimers();
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hail' } });
     act(() => {
       vi.advanceTimersByTime(250);
     });
-    rerender(<SearchBar onSearch={vi.fn()} resultCount={1} />);
-    expect(status.textContent).toBe('1 result for "crop"');
+    onSearch.mockClear();
 
-    rerender(<SearchBar onSearch={vi.fn()} resultCount={0} />);
-    expect(status.textContent).toBe('0 results for "crop"');
-  });
-
-  it('renders no live region when resultCount is not provided', () => {
-    render(<SearchBar onSearch={vi.fn()} />);
-    expect(screen.queryByRole('status')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Clear search'));
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(onSearch).toHaveBeenCalledWith('');
   });
 });

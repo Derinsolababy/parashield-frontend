@@ -57,6 +57,12 @@ export const STROOPS_PER_UNIT = 10_000_000n;
 // This prevents dust deposits that may round to 0 or be rejected by the pool contract.
 export const MIN_DEPOSIT_STROOPS = 100_000n;
 
+// Minimum withdrawal: 0.01 LP shares (100,000 stroops), matching the deposit
+// floor so dust withdrawals that round to 0 USDC or fail on chain are blocked
+// client-side. A holder whose entire balance is below this can still withdraw
+// all of it, so small positions are never stuck.
+export const MIN_WITHDRAW_STROOPS = 100_000n;
+
 const _CONTRACT_RE = /^C[A-Z2-7]{55}$/;
 
 function validateContractId(envKey: string, label: string): string {

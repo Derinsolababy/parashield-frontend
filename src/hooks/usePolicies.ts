@@ -5,6 +5,7 @@ import { fetchUserPolicies, fetchPolicy } from "@/lib/api";
 import { isApiError } from "@/lib/errors";
 import type { Policy } from "@/types";
 import { POLLING_INTERVAL_MS } from "@/lib/constants";
+import { getCachedPolicy, setCachedPolicy } from "@/lib/policyCache";
 
 export function usePolicies(walletAddress: string | null) {
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -87,24 +88,19 @@ export function usePolicies(walletAddress: string | null) {
   return { policies, loading, error, pollingError, refetch };
 }
 
-const POLICY_CACHE_TTL_MS = 30_000;
-const policyCache = new Map<string, { data: Policy; ts: number }>();
-
 export function usePolicy(id: string | null) {
   const [policy, setPolicy] = useState<Policy | null>(() => {
     if (!id) return null;
-    const cached = policyCache.get(id);
-    if (cached && Date.now() - cached.ts < POLICY_CACHE_TTL_MS) return cached.data;
-    return null;
+    return getCachedPolicy(id);
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    const cached = policyCache.get(id);
-    if (cached && Date.now() - cached.ts < POLICY_CACHE_TTL_MS) {
-      setPolicy(cached.data);
+    const cached = getCachedPolicy(id);
+    if (cached) {
+      setPolicy(cached);
       setLoading(false);
       return;
     }
@@ -114,7 +110,7 @@ export function usePolicy(id: string | null) {
     fetchPolicy(id)
       .then((p) => {
         if (!cancelled) {
-          policyCache.set(id, { data: p, ts: Date.now() });
+          setCachedPolicy(id, p);
           setPolicy(p);
         }
       })
@@ -149,7 +145,7 @@ export function usePolicy(id: string | null) {
     setError(null);
     try {
       const p = await fetchPolicy(id);
-      policyCache.set(id, { data: p, ts: Date.now() });
+      setCachedPolicy(id, p);
       setPolicy(p);
     } catch (err) {
       // 404 means the policy doesn't exist — show "not found" instead of error
