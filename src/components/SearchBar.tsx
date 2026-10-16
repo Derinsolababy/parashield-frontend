@@ -11,6 +11,15 @@ interface SearchBarProps {
   className?:   string;
   /** Delay before `onSearch` fires after the user stops typing. */
   debounceMs?:  number;
+  /** Accessible name for the input (placeholder text is not a label). */
+  label?:       string;
+  /** id of the element whose contents this search filters (aria-controls). */
+  resultsId?:   string;
+  /**
+   * Number of results currently shown. When provided, changes are announced
+   * to screen readers via a polite live region while a query is active.
+   */
+  resultCount?: number;
 }
 
 export function SearchBar({
@@ -18,6 +27,9 @@ export function SearchBar({
   placeholder = 'Search…',
   className,
   debounceMs = 250,
+  label = 'Search',
+  resultsId,
+  resultCount,
 }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const debouncedQuery   = useDebounce(query, debounceMs);
@@ -35,7 +47,11 @@ export function SearchBar({
   }, [debouncedQuery, onSearch]);
 
   return (
-    <div className={`relative ${className ?? ''}`}>
+    // #716: this is a live filter over the page's results (not an autocomplete
+    // popup), so it uses the search-landmark + labelled input + live-region
+    // pattern rather than combobox/listbox. Options may not contain
+    // interactive content, and the filtered product cards have buttons/links.
+    <div role="search" className={`relative ${className ?? ''}`}>
       <Search
         size={16}
         aria-hidden="true"
@@ -46,6 +62,8 @@ export function SearchBar({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
+        aria-label={label}
+        aria-controls={resultsId}
         className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-4 text-sm text-white placeholder:text-gray-400 focus:border-teal-500 focus:outline-none"
       />
       {query && (
@@ -60,6 +78,13 @@ export function SearchBar({
         >
           <X size={14} aria-hidden="true" />
         </button>
+      )}
+      {resultCount !== undefined && (
+        <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {debouncedQuery.trim()
+            ? `${resultCount} ${resultCount === 1 ? 'result' : 'results'} for "${debouncedQuery.trim()}"`
+            : ''}
+        </p>
       )}
     </div>
   );
