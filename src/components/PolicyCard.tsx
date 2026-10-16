@@ -7,6 +7,17 @@ import { Badge } from './Badge';
 import type { Policy } from '@/types';
 import { formatUSDC, formatDate, formatDateTime, timeLeft } from '@/lib/format';
 import { CATEGORY_ICONS } from '@/lib/constants';
+import { EXPIRY_WARNING_MS } from '@/hooks/useExpiryWarnings';
+
+/**
+ * Whether an Active policy ends within the next 24h (#680), the same window
+ * useExpiryWarnings uses for its toast. `endTime` is unix seconds.
+ */
+export function isExpiringSoon(policy: Policy, nowMs: number = Date.now()): boolean {
+  if (policy.status !== 'Active') return false;
+  const remainingMs = policy.endTime * 1000 - nowMs;
+  return remainingMs > 0 && remainingMs < EXPIRY_WARNING_MS;
+}
 
 interface PolicyCardProps {
   policy: Policy;
@@ -17,6 +28,7 @@ function PolicyCardComponent({ policy }: PolicyCardProps) {
   const icon       = policy.product ? CATEGORY_ICONS[policy.product.category] ?? '🛡️' : '🛡️';
   const name       = policy.product?.name ?? `Policy #${policy.id.slice(0, 8)}`;
   const isActive   = policy.status === 'Active';
+  const expiringSoon = isExpiringSoon(policy);
   const policyHref = `/policies/${policy.id}`;
 
   const navigateToPolicy = useCallback(() => {
@@ -72,7 +84,15 @@ function PolicyCardComponent({ policy }: PolicyCardProps) {
       }`}>
         <div className="flex items-start justify-between gap-2">
           <span className="text-2xl">{icon}</span>
-          <Badge label={policy.status} />
+          {expiringSoon ? (
+            // Distinct amber badge + exact time on hover for policies that
+            // need attention within 24h (#680).
+            <span title={`Expires ${formatDateTime(policy.endTime)}`}>
+              <Badge label="Expiring soon" variant="amber" icon="⚠" />
+            </span>
+          ) : (
+            <Badge label={policy.status} />
+          )}
         </div>
 
       <h3 className="mt-3 text-sm font-semibold leading-snug text-white">{name}</h3>
