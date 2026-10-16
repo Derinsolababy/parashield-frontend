@@ -14,6 +14,7 @@ import type { Transaction } from '@stellar/stellar-sdk';
 import { SOROBAN_RPC_URL, POLICY_CONTRACT_ID, CLAIMS_CONTRACT_ID, NETWORK_PASSPHRASE } from './constants';
 import { signTransaction } from './stellar';
 import { ContractError, StateArchivedError } from './errors';
+import { invalidatePolicyCache } from './policyCache';
 
 // Cached singleton — avoids allocating a new HTTP connection pool on every
 // contract call (issue #129). Reset to null if the URL changes at runtime.
@@ -240,12 +241,17 @@ export async function invokeBuyPolicy(
       throw new ContractError('Transaction rejected by the network.', submitResult.hash, submitResult.errorResult);
     }
     const txHash = await waitForConfirmation(submitResult.hash);
+    invalidatePolicyCache(); // #730 — the new policy must not be masked by cached reads
     return { txHash, signedXdr };
   });
 }
 
 export function invokeSubmitClaim(walletAddress: string, policyId: string): Promise<string> {
-  return withStateRestore(() => submitClaimOnce(walletAddress, policyId));
+  return withStateRestore(async () => {
+    const txHash = await submitClaimOnce(walletAddress, policyId);
+    invalidatePolicyCache(policyId); // #730 — the claim changes the policy's state
+    return txHash;
+  });
 }
 
 async function submitClaimOnce(
