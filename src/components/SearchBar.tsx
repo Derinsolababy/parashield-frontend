@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { usePathname } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -13,7 +13,11 @@ interface SearchBarProps {
   debounceMs?:  number;
 }
 
-export function SearchBar({
+/**
+ * Controlled search input: the field updates on every keystroke, and only the
+ * `onSearch` callback is debounced so typing never lags behind the user.
+ */
+export const SearchBar = memo(function SearchBar({
   onSearch,
   placeholder = 'Search…',
   className,
@@ -22,17 +26,26 @@ export function SearchBar({
   const [query, setQuery] = useState('');
   const debouncedQuery   = useDebounce(query, debounceMs);
   const pathname = usePathname();
+  // Last value handed to `onSearch`, so clears and the debounce settling on the
+  // same value don't trigger a redundant parent re-filter.
+  const lastEmitted = useRef<string | null>(null);
+
+  const emit = useCallback((value: string) => {
+    if (lastEmitted.current === value) return;
+    lastEmitted.current = value;
+    onSearch(value);
+  }, [onSearch]);
 
   useEffect(() => {
     if (pathname === '/') {
       setQuery('');
-      onSearch('');
+      emit('');
     }
-  }, [pathname, onSearch]);
+  }, [pathname, emit]);
 
   useEffect(() => {
-    onSearch(debouncedQuery);
-  }, [debouncedQuery, onSearch]);
+    emit(debouncedQuery);
+  }, [debouncedQuery, emit]);
 
   return (
     <div className={`relative ${className ?? ''}`}>
@@ -53,7 +66,7 @@ export function SearchBar({
           onClick={() => {
             // Clearing is a deliberate action, so reset the results immediately.
             setQuery('');
-            onSearch('');
+            emit('');
           }}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
           aria-label="Clear search"
@@ -63,4 +76,4 @@ export function SearchBar({
       )}
     </div>
   );
-}
+});
