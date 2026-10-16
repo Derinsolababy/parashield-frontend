@@ -9,12 +9,14 @@ interface ModalProps {
   title?:   string;
   children: ReactNode;
   maxWidth?: string;
+  /** Id of an element describing the dialog's content (sets aria-describedby). */
+  describedBy?: string;
 }
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }: ModalProps) {
+export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', describedBy }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -115,6 +117,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }:
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        aria-describedby={describedBy}
         tabIndex={-1}
         // Own scroll container, capped to the viewport, with overscroll contained
         // so reaching its top/bottom never chains to the page on iOS (#552).
