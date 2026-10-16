@@ -88,6 +88,38 @@ describe('SearchBar debouncing', () => {
     expect(onSearch).toHaveBeenCalledWith('crop');
   });
 
+  it('shows a spinner and aria-busy while the debounce is pending (#653)', () => {
+    vi.useFakeTimers();
+    render(<SearchBar onSearch={vi.fn()} />);
+    const input = screen.getByRole('textbox');
+
+    expect(screen.queryByTestId('search-pending')).toBeNull();
+    expect(input.getAttribute('aria-busy')).toBe('false');
+
+    fireEvent.change(input, { target: { value: 'flood' } });
+    const spinner = screen.getByTestId('search-pending');
+    expect(spinner.getAttribute('class')).toContain('animate-spin');
+    expect(input.getAttribute('aria-busy')).toBe('true');
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByTestId('search-pending')).toBeNull();
+    expect(input.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('does not show the spinner after clearing the query (#653)', () => {
+    vi.useFakeTimers();
+    render(<SearchBar onSearch={vi.fn()} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'rain' } });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    fireEvent.click(screen.getByLabelText('Clear search'));
+    expect(screen.queryByTestId('search-pending')).toBeNull();
+  });
+
   it('clears results immediately when the clear button is pressed', () => {
     vi.useFakeTimers();
     const onSearch = vi.fn();
