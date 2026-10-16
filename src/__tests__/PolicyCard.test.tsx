@@ -1,5 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { PolicyCard } from '../components/PolicyCard';
+import { afterEach, vi } from 'vitest';
+import { PolicyCard, formatCoverage } from '../components/PolicyCard';
+
+// PolicyCard calls useRouter(); outside a mounted app router it throws
+// "invariant expected app router to be mounted", which failed every test here.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), prefetch: vi.fn() }),
+}));
 import type { Policy } from '../types';
 
 function makePolicy(overrides: Partial<Policy> = {}): Policy {
@@ -108,5 +115,32 @@ describe('PolicyCard', () => {
       <PolicyCard policy={makePolicy({ id: 'policy-12345678', product: undefined })} />
     );
     expect(html).toContain('Policy #policy-1');
+  });
+});
+
+describe('PolicyCard coverage validation (#715)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('shows "Invalid" and warns for a negative coverage amount', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const html = renderToStaticMarkup(<PolicyCard policy={makePolicy({ coverage: '-10000000' })} />);
+    expect(html).toContain('Invalid');
+    expect(html).not.toContain('-1.00');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('negative coverage'));
+  });
+
+  it('shows "Invalid" for a non-numeric coverage amount', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(formatCoverage('abc', 'policy-1')).toBe('Invalid');
+  });
+
+  it('formats zero and positive coverage normally without warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(formatCoverage('0', 'policy-1')).not.toBe('Invalid');
+    const html = renderToStaticMarkup(<PolicyCard policy={makePolicy()} />);
+    expect(html).not.toContain('Invalid');
+    expect(warn).not.toHaveBeenCalled();
   });
 });
