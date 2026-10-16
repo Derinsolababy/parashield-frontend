@@ -139,3 +139,60 @@ describe('SearchBar debouncing', () => {
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('');
   });
 });
+
+describe('SearchBar input responsiveness (#666)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reflects every keystroke in the input immediately, before the debounce fires', () => {
+    vi.useFakeTimers();
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} debounceMs={1000} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    onSearch.mockClear();
+
+    for (const value of ['d', 'dr', 'dro', 'drou', 'drought']) {
+      fireEvent.change(input, { target: { value } });
+      // No timers advanced: the field must already show the typed value.
+      expect(input.value).toBe(value);
+    }
+    expect(onSearch).not.toHaveBeenCalled();
+  });
+
+  it('handles a burst of keystrokes quickly', () => {
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+
+    const start = performance.now();
+    let value = '';
+    for (let i = 0; i < 200; i++) {
+      value += 'a';
+      fireEvent.change(input, { target: { value } });
+    }
+    const elapsed = performance.now() - start;
+
+    expect(input.value).toHaveLength(200);
+    // Generous bound: per-keystroke work is just a state update.
+    expect(elapsed / 200).toBeLessThan(16);
+  });
+
+  it('does not re-emit an empty query after clearing once the debounce settles', () => {
+    vi.useFakeTimers();
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hail' } });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    onSearch.mockClear();
+
+    fireEvent.click(screen.getByLabelText('Clear search'));
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(onSearch).toHaveBeenCalledWith('');
+  });
+});
