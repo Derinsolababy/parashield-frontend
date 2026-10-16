@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { connectWallet, disconnectWallet, getStoredAddress, getConnectedAddress, signAuthMessage, EXPECTED_NETWORK_PASSPHRASE } from '@/lib/stellar';
+import { connectWallet, disconnectWallet, getStoredAddress, getConnectedAddress, getWalletNetworkPassphrase, signAuthMessage, EXPECTED_NETWORK_PASSPHRASE } from '@/lib/stellar';
 import { toUserMessage } from '@/lib/errors';
 import { fetchChallenge, login, setAuthErrorHandler } from '@/lib/api';
 import storage from '@/lib/storage';
@@ -36,6 +36,9 @@ interface WalletContextValue {
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
+
+/** How often to re-read the wallet's network while connected (#724). */
+export const NETWORK_RECHECK_INTERVAL_MS = 5_000;
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [address,    setAddress]    = useState<string | null>(null);
@@ -150,6 +153,34 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setAuthErrorHandler(disconnect);
   }, [disconnect]);
+
+  // The wallet kit exposes no network-change event, so while connected
+  // re-read the wallet's network on mount, when the tab regains focus, and on
+  // an interval — otherwise a switch made in the wallet leaves the banner and
+  // network checks on the stale value from connect time (#724).
+  useEffect(() => {
+    if (!address) return;
+    let cancelled = false;
+
+    const recheck = async () => {
+      const passphrase = await getWalletNetworkPassphrase();
+      if (!cancelled && passphrase) setNetworkPassphrase(passphrase);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void recheck();
+    };
+
+    void recheck();
+    const timer = setInterval(() => void recheck(), NETWORK_RECHECK_INTERVAL_MS);
+    window.addEventListener('focus', recheck);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener('focus', recheck);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [address]);
 
   const walletState: WalletState = connecting
     ? { status: 'connecting' }

@@ -1,8 +1,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
-import { WalletProvider, useWalletContext } from '../context/WalletContext';
-import { connectWallet } from '@/lib/stellar';
+import { vi, describe, it, expect, beforeEach, afterEach, type Mock } from 'vitest';
+import { NETWORK_RECHECK_INTERVAL_MS, WalletProvider, useWalletContext } from '../context/WalletContext';
+import { connectWallet, getWalletNetworkPassphrase } from '@/lib/stellar';
 import { fetchChallenge, login } from '@/lib/api';
 import storage from '@/lib/storage';
 
@@ -11,6 +11,7 @@ vi.mock('@/lib/stellar', () => ({
   disconnectWallet:           vi.fn(),
   getStoredAddress:           vi.fn(() => null),
   getConnectedAddress:        vi.fn(),
+  getWalletNetworkPassphrase: vi.fn(async () => null),
   signAuthMessage:            vi.fn(async (c: string) => `signed:${c}`),
   EXPECTED_NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015',
 }));
