@@ -3,6 +3,7 @@ import { ApiError } from './errors';
 import { API_URL, AUTH_TOKEN_STORAGE_KEY } from './constants';
 import storage from './storage';
 import type { Product, Policy, Claim, OracleReading, PoolStats, PoolShareInfo, ProtocolStats, ApiResponse, PaginatedResponse } from '@/types';
+import { invalidatePolicyCache } from './policyCache';
 
 let onAuthError: (() => void) | null = null;
 
@@ -171,7 +172,10 @@ export interface BuyPolicyPayload {
 }
 
 export function buyPolicy(payload: BuyPolicyPayload): Promise<{ policyId: string; txHash: string }> {
-  return post('/policies/buy', payload);
+  return post<{ policyId: string; txHash: string }>('/policies/buy', payload).then((res) => {
+    invalidatePolicyCache(); // #730 — never serve pre-purchase policy data
+    return res;
+  });
 }
 
 // ── Claims ────────────────────────────────────────────────────────────────────
@@ -189,7 +193,10 @@ export function fetchClaim(claimId: string): Promise<Claim | null> {
 
 export function submitClaim(claimant: string, policyId: string): Promise<string> {
   return post<{ claimId: string }>('/claims', { claimant, policyId })
-    .then((d) => d.claimId);
+    .then((d) => {
+      invalidatePolicyCache(policyId); // #730 — the claim changes the policy's state
+      return d.claimId;
+    });
 }
 
 // ── Oracle ────────────────────────────────────────────────────────────────────
