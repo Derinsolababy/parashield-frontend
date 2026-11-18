@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Purge config (#809): scan app source for class names; never emit utilities
+   referenced only by tests/locales. Dynamic classes stay safe because every
+   conditional class in src is a complete literal. */
+@source "../app";
+@source "../components";
+@source "../context";
+@source "../hooks";
+@source "../lib";
+@source "../types";
+@source not "../**/__tests__/**";
+
 /*
  * Tailwind v4 config is CSS-first (#455); tailwind.config.ts's
  * `darkMode: 'class'` was never actually loaded (no `@config` directive

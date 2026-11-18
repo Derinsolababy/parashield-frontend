@@ -35,6 +35,7 @@ const ToastItem = memo(function ToastItem({ toast }: { toast: ToastType }) {
         onClick={() => dismiss(toast.id)}
         className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
         aria-label="Dismiss"
+        title="Dismiss"
       >
         <X size={14} />
       </button>
