@@ -5,12 +5,14 @@ import { useToast } from '@/context/ToastContext';
 import { COPY_FEEDBACK_DURATION_MS } from '@/lib/constants';
 
 interface CopyButtonProps {
-  text:      string;
-  label?:    string;
-  className?: string;
+  text:            string;
+  label?:          string;
+  className?:      string;
+  /** Toast message shown on successful copy. Defaults to "Copied to clipboard". */
+  successMessage?: string;
 }
 
-export function CopyButton({ text, label, className }: CopyButtonProps) {
+export function CopyButton({ text, label, className, successMessage }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
   const { show: showToast } = useToast();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -38,6 +40,7 @@ export function CopyButton({ text, label, className }: CopyButtonProps) {
         }
       }
       setCopied(true);
+      showToast(successMessage ?? 'Copied to clipboard', 'success');
       timerRef.current = setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
     } catch {
       showToast('Copy failed – please copy the text manually', 'error');
