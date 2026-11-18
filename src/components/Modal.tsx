@@ -158,6 +158,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', d
               onClick={onClose}
               className="text-gray-500 dark:text-gray-400 transition-colors hover:text-gray-950 dark:hover:text-white"
               aria-label="Close modal"
+              title="Close"
             >
               ✕
             </button>

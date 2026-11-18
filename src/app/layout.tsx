@@ -13,7 +13,9 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { validateConfig } from '@/lib/constants';
 import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { LogoWordmark } from '@/components/Logo';
+import { resolveLocale } from '@/lib/i18n';
 
 validateConfig();
 
@@ -74,9 +76,11 @@ const FooterFallback = (
   </footer>
 );
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Set lang from the request so screen readers pronounce content correctly (#807).
+  const lang = resolveLocale((await headers()).get('accept-language'));
   return (
-    <html lang="en" className={`dark ${inter.variable}`}>
+    <html lang={lang} className={`dark ${inter.variable}`}>
       <body className="bg-gray-950 text-white dark:bg-gray-950 dark:text-white bg-white text-gray-950 antialiased">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:bg-teal-500 focus:px-4 focus:py-2 focus:text-white">Skip to main content</a>
         <Analytics />

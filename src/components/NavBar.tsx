@@ -73,6 +73,7 @@ export function NavBar() {
             onClick={toggle}
             className="text-gray-400 hover:text-white transition-colors"
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
             <div className="relative w-5 h-5 inline-block">
               {theme === 'dark' ? (
@@ -89,6 +90,7 @@ export function NavBar() {
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-nav"
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            title={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
