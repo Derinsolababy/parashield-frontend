@@ -9,6 +9,13 @@ interface CopyButtonProps {
   label?:          string;
   className?:      string;
   /** Toast message shown on successful copy. Defaults to "Copied to clipboard". */
+  text:      string;
+  label?:    string;
+  className?: string;
+  /**
+   * Toast shown after a successful copy. Defaults to a generic confirmation.
+   * Pass the full value when the visible label is truncated (#739).
+   */
   successMessage?: string;
 }
 
@@ -41,6 +48,7 @@ export function CopyButton({ text, label, className, successMessage }: CopyButto
       }
       setCopied(true);
       showToast(successMessage ?? 'Copied to clipboard', 'success');
+      showToast(successMessage ?? `Copied: ${text}`, 'success');
       timerRef.current = setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
     } catch {
       showToast('Copy failed – please copy the text manually', 'error');

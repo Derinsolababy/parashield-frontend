@@ -20,6 +20,13 @@ export function WalletAddressDisplay({ className, full = false }: WalletAddressD
         {full ? address : shortenAddress(address)}
       </span>
       <CopyButton text={address} label="Copy" successMessage="Full address copied to clipboard" />
+      {/* Always pass the full address — the span may be truncated, but the
+          clipboard must receive the complete key (#739). */}
+      <CopyButton
+        text={address}
+        label="Copy"
+        successMessage={`Copied full address: ${address}`}
+      />
     </div>
   );
 }
