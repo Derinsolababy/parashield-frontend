@@ -19,7 +19,7 @@ export function WalletAddressDisplay({ className, full = false }: WalletAddressD
       <span className="font-mono text-sm text-gray-300">
         {full ? address : shortenAddress(address)}
       </span>
-      <CopyButton text={address} label="Copy" />
+      <CopyButton text={address} label="Copy" successMessage="Full address copied to clipboard" />
     </div>
   );
 }
