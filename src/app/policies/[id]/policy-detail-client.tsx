@@ -8,7 +8,7 @@ import { PolicyStatusTimeline, getPolicyLastUpdated } from "@/components/PolicyS
 import { TransactionLink } from "@/components/TransactionLink";
 import { Badge } from "@/components/Badge";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import { formatUSDC, formatDate, formatDateTime, timeLeft, shortenAddress } from "@/lib/format";
+import { formatUSDC, formatDate, formatDateTime, timeLeft, shortenAddress, safeBigInt, basisPointsToPercent } from "@/lib/format";
 import { CopyButton } from "@/components/CopyButton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ClaimStatus } from "@/components/ClaimStatus";
@@ -93,6 +93,12 @@ export default function PolicyDetailClient({
   const canClaim =
     policy.status === "Active" && address === policy.policyholder;
 
+  const coverageStroops = safeBigInt(policy.coverage);
+  const premiumRateBps =
+    coverageStroops > 0n
+      ? (safeBigInt(policy.premiumPaid) * 10_000n) / coverageStroops
+      : null;
+
   const categoryKey = policy.product?.category as keyof typeof CATEGORY_ICONS | undefined;
   const categoryIcon = categoryKey ? CATEGORY_ICONS[categoryKey] ?? '🛡️' : '🛡️';
 
@@ -147,9 +153,7 @@ export default function PolicyDetailClient({
           { label: "Premium paid", value: formatUSDC(policy.premiumPaid) },
           {
             label: "Premium rate",
-            value: policy.coverage > 0
-              ? `${((policy.premiumPaid / policy.coverage) * 100).toFixed(2)}%`
-              : "N/A",
+            value: premiumRateBps !== null ? basisPointsToPercent(Number(premiumRateBps)) : "N/A",
           },
         ].map(({ label, value }) => (
           <div

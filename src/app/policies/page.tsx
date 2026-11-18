@@ -127,12 +127,12 @@ export default function PoliciesPage() {
     
     const query = searchQuery.toLowerCase();
     return filteredByStatus.filter((p) => {
-      // Search in policy ID, status, and amount
+      // Search in policy ID, status, coverage, and product name
       return (
         p.id.toLowerCase().includes(query) ||
         p.status.toLowerCase().includes(query) ||
-        (p.amount && p.amount.toString().includes(query)) ||
-        (p.productName && p.productName.toLowerCase().includes(query))
+        (p.coverage && p.coverage.includes(query)) ||
+        (p.product?.name && p.product.name.toLowerCase().includes(query))
       );
     });
   }, [filteredByStatus, searchQuery]);
@@ -143,12 +143,12 @@ export default function PoliciesPage() {
     
     switch (sortBy) {
       case 'newest':
-        return sorted.sort((a, b) => 
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        return sorted.sort((a, b) =>
+          (b.createdAt ?? b.startTime) - (a.createdAt ?? a.startTime)
         );
       case 'oldest':
-        return sorted.sort((a, b) => 
-          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        return sorted.sort((a, b) =>
+          (a.createdAt ?? a.startTime) - (b.createdAt ?? b.startTime)
         );
       case 'amount-high':
         return sorted.sort((a, b) => (b.amount || 0) - (a.amount || 0));
