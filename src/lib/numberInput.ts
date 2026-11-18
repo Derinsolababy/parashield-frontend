@@ -1,4 +1,4 @@
-import type { ClipboardEvent, KeyboardEvent } from 'react';
+import type { ClipboardEvent, KeyboardEvent, TouchEvent, WheelEvent } from 'react';
 
 /**
  * Plain non-negative decimal: digits with an optional fractional part. No
@@ -32,4 +32,55 @@ function blockNonDecimalPaste(e: ClipboardEvent<HTMLInputElement>) {
 export const amountInputGuards = {
   onKeyDown: blockNonDecimalKeys,
   onPaste: blockNonDecimalPaste,
+} as const;
+
+// iOS Safari treats a scroll or swipe gesture over `type="number"` as a
+// stepper nudge, silently changing the value mid-scroll (#811).
+function blockScrollValueChange(e: WheelEvent<HTMLInputElement>) {
+  e.currentTarget.blur();
+}
+
+interface TouchGuardSnapshot {
+  value: string;
+  x: number;
+  y: number;
+}
+
+function snapshotTouchGesture(e: TouchEvent<HTMLInputElement>) {
+  const t = e.touches[0];
+  const snap: TouchGuardSnapshot = {
+    value: e.currentTarget.value,
+    x: t?.clientX ?? 0,
+    y: t?.clientY ?? 0,
+  };
+  e.currentTarget.dataset.touchGuard = JSON.stringify(snap);
+}
+
+function restoreTouchGesture(e: TouchEvent<HTMLInputElement>) {
+  const el = e.currentTarget;
+  const raw = el.dataset.touchGuard;
+  delete el.dataset.touchGuard;
+  if (!raw) return;
+  const snap = JSON.parse(raw) as TouchGuardSnapshot;
+  const t = e.changedTouches[0];
+  const moved = t
+    ? Math.abs(t.clientX - snap.x) > 10 || Math.abs(t.clientY - snap.y) > 10
+    : true;
+  // A swipe across the field mutates the value without typing; a stationary
+  // tap (e.g. the stepper arrows) is intentional and must be kept.
+  if (moved && el.value !== snap.value) {
+    el.value = snap.value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+/**
+ * Spread onto numeric inputs so scroll/swipe gestures can never change the
+ * value (#811).
+ */
+export const numberScrollGuards = {
+  onWheel: blockScrollValueChange,
+  onTouchStart: snapshotTouchGesture,
+  onTouchEnd: restoreTouchGesture,
+  onTouchCancel: restoreTouchGesture,
 } as const;

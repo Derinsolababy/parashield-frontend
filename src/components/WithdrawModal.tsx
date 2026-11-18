@@ -8,6 +8,7 @@ import { buildWithdrawTx, submitSignedTransaction, withStateRestore } from '@/li
 import { signTransaction } from '@/lib/stellar';
 import { displayToStroops, stroopsToDisplay } from '@/lib/format';
 import { amountInputGuards, isPlainDecimal } from '@/lib/numberInput';
+import { NumberInput } from '@/components/NumberInput';
 import { ContractError, toUserMessage } from '@/lib/errors';
 import { CATEGORY_LABELS, MIN_WITHDRAW_STROOPS } from '@/lib/constants';
 import { Modal } from './Modal';
@@ -139,8 +140,7 @@ export function WithdrawModal({ pool, onClose }: Props) {
           <label className={LABEL_CLASS}>
             LP Shares to Withdraw
           </label>
-          <input
-            type="number"
+          <NumberInput
             value={amount}
             onChange={(e) => { setAmount(e.target.value); setError(''); }}
             {...amountInputGuards}

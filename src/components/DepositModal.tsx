@@ -8,6 +8,7 @@ import { buildDepositTx, submitSignedTransaction, withStateRestore } from '@/lib
 import { signTransaction } from '@/lib/stellar';
 import { displayToStroops, formatUSDC, stroopsToDisplay } from '@/lib/format';
 import { amountInputGuards, isPlainDecimal } from '@/lib/numberInput';
+import { NumberInput } from '@/components/NumberInput';
 import { ContractError, toUserMessage } from '@/lib/errors';
 import { CATEGORY_LABELS, MIN_DEPOSIT_STROOPS } from '@/lib/constants';
 import { Modal } from './Modal';
@@ -165,9 +166,8 @@ export function DepositModal({ pool, onClose }: Props) {
           <label htmlFor="deposit-amount" className={LABEL_CLASS}>
             Amount (USDC)
           </label>
-          <input
+          <NumberInput
             id="deposit-amount"
-            type="number"
             value={amount}
             onChange={(e) => { setAmount(e.target.value); setError(''); }}
             {...amountInputGuards}

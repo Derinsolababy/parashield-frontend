@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import type { Product } from '@/types';
 import { useWallet } from '@/hooks/useWallet';
 import { displayToStroops, stroopsToDisplay, estimatePremium, basisPointsToPercent, toDateInputValue, dateInputToEpoch } from '@/lib/format';
-import { amountInputGuards, isPlainDecimal } from '@/lib/numberInput';
+import { amountInputGuards, isPlainDecimal, numberScrollGuards } from '@/lib/numberInput';
+import { NumberInput } from '@/components/NumberInput';
 import { toUserMessage } from '@/lib/errors';
 import { invokeBuyPolicy, type TxStage } from '@/lib/contract';
 import { buyPolicy as recordPolicyPurchase } from '@/lib/api';
@@ -266,8 +267,7 @@ export function BuyPolicyModal({ product, onClose }: Props) {
               <label className={LABEL_CLASS}>
                 Coverage Amount (USDC)
               </label>
-              <input
-                type="number"
+              <NumberInput
                 min={minDisplay}
                 max={maxDisplay}
                 value={coverage}
@@ -283,8 +283,7 @@ export function BuyPolicyModal({ product, onClose }: Props) {
               <label className={LABEL_CLASS}>
                 Duration (days, max {product.maxDuration})
               </label>
-              <input
-                type="number"
+              <NumberInput
                 value={duration}
                 onChange={(e) => { setDuration(e.target.value); setDurationError(''); }}
                 {...amountInputGuards}
@@ -308,6 +307,7 @@ export function BuyPolicyModal({ product, onClose }: Props) {
                       step="0.0001"
                       value={lat}
                       onChange={(e) => { setLat(e.target.value); setLatError(''); }}
+                      {...numberScrollGuards}
                       maxLength={16}
                       placeholder="e.g. -0.0917"
                       className={`${INPUT_CLASS} ${latError ? 'border-red-500' : ''}`}
@@ -323,6 +323,7 @@ export function BuyPolicyModal({ product, onClose }: Props) {
                       step="0.0001"
                       value={lng}
                       onChange={(e) => { setLng(e.target.value); setLngError(''); }}
+                      {...numberScrollGuards}
                       placeholder="e.g. 34.7679"
                       className={`${INPUT_CLASS} ${lngError ? 'border-red-500' : ''}`}
                     />
