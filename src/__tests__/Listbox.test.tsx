@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, createEvent } from '@testing-library/react';
 import { Listbox } from '../components/Listbox';
 
 const OPTIONS = [
@@ -104,5 +104,33 @@ describe('Listbox keyboard pattern', () => {
     fireEvent.click(combobox);
     fireEvent.click(screen.getByRole('option', { name: 'Expiring Soon' }));
     expect(onChange).toHaveBeenCalledWith('expiry');
+  });
+
+  it('calls onChange only when the committed value differs from the current one (#917)', () => {
+    const { combobox, onChange } = setup();
+    fireEvent.click(combobox);
+    fireEvent.click(screen.getByRole('option', { name: 'Newest First' })); // already selected
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('dismisses on outside pointerdown but not inside (#917)', () => {
+    const { combobox } = setup();
+    fireEvent.click(combobox);
+    expect(combobox).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.pointerDown(screen.getByRole('listbox'));
+    expect(combobox).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.pointerDown(document.body);
+    expect(combobox).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('prevents default on option mousedown to keep focus on the trigger (#917)', () => {
+    const { combobox } = setup();
+    fireEvent.click(combobox);
+    const option = screen.getByRole('option', { name: 'Oldest First' });
+    const ev = createEvent.mouseDown(option);
+    fireEvent(option, ev);
+    expect(ev.defaultPrevented).toBe(true);
   });
 });

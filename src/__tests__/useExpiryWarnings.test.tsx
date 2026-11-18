@@ -80,4 +80,26 @@ describe('useExpiryWarnings (#532)', () => {
     hook.rerender();
     expect(toasts).toEqual(['Policy #soon expires within 24 hours']);
   });
+
+  it('keeps separate notified sets per wallet address (#916)', () => {
+    const toasts: string[] = [];
+    let address: string | null = 'GWALLET-A';
+    const hook = renderHook(() =>
+      useExpiryWarnings([makePolicy()], true, address, (m) => { toasts.push(m); }),
+    );
+    expect(toasts).toHaveLength(1);
+
+    address = 'GWALLET-B';
+    hook.rerender();
+    expect(toasts).toHaveLength(2);
+  });
+
+  it('treats malformed sessionStorage JSON as empty (#916)', () => {
+    sessionStorage.setItem(expiryNotifiedStorageKey('GWALLET'), '{not json');
+    const toasts: string[] = [];
+
+    renderHook(() => useExpiryWarnings([makePolicy()], true, 'GWALLET', (m) => { toasts.push(m); }));
+
+    expect(toasts).toHaveLength(1);
+  });
 });
